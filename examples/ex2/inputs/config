@@ -1,0 +1,11 @@
+# discretization options
+discretize.dense.max_buckets=250
+discretize.dense.lamL2=10
+    
+# training options
+dtree.new_tree_gain_ratio=1.0
+dtree.loss=LS
+dtree.lamL1=10
+dtree.lamL2=1000
+forest.ntrees=1000
+ 
