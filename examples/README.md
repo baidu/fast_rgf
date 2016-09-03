@@ -18,7 +18,7 @@ The program can directly handle high dimensional sparse features in the libsvm f
 
 There are multiple training parameters that can affect performance. The following are the more important ones:
 
-* **dtree.loss**: default is LS, but for binary classificaiton, LOGISTIC often works better.
+* **dtree.loss**: default is LS, but for binary classification, LOGISTIC often works better.
 * **forest.ntrees**: typical range is [100,10000], and a typical value is 1000.
 * **dtree.lamL2**: use a relatively large vale such as 1000 or 10000. The larger dtree.lamL2 is, the larger forest.ntrees you need to use: the resulting accuracy is often better with a longer training time.
 * **dtree.lamL1**: try values in [0,1000], and a large value induces sparsity.
