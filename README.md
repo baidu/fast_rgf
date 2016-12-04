@@ -2,14 +2,14 @@
 #                                       FastRGF
 ###     Multi-core implementation of Regularized Greedy Forest [RGF] 
 
-### Version 0.2 (August 2016) by Tong Zhang
+### Version 0.3 (Dec 2016) by Tong Zhang
                           
 ---------
 #### 1. Introduction
 
 This software package provides a multi-core implementation of a simplified Regularized Greedy Forest (RGF) described in **[RGF]**. Please cite the paper if you find the software useful. 
 
-RGF is a machine learning method for building decision forests that have been used to win some kaggle competitions. In our experience it works better than *gradient boosting* on many relatively large data.
+RGF is a machine learning method for building decision forests that have been used to win some kaggle competitions. In our experience it works better than *gradient boosting* on many relatively large datasets.
 
 The implementation employs the following conepts described in the **[RGF]** paper:
 
@@ -53,7 +53,7 @@ The software is written in c++11, and it has been tested under linux and macos, 
 You may use the option -h to show command-line options (options can also be provided in a configuration file).
  
 #### 3. Examples
- Go to the subdirectory examples/, and following the instructions in [README.md](examples/README.md) (it also contains some tips for parameter tuning).
+ Go to the subdirectory examples/, and following the instructions in [README.md](examples/README.md). The file also contains some tips for parameter tuning.
  
 #### 4. Contact
 Tong Zhang

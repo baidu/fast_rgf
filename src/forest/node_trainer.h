@@ -286,9 +286,9 @@ namespace _decisionTreeTrainer
       cut_orig=-1;
       if (gain>=0 && feature >=0 && cut >=0) {
 	if (feature<featmap_dense.size()) {
-	  cut_orig=featmap_dense[feature].get(cut);
+	  cut_orig=featmap_dense[feature].get(cut); 
 	}
-	cut_orig=cut;
+	else cut_orig=cut;  
       }
     }
 

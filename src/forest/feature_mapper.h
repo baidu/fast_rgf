@@ -149,7 +149,7 @@ namespace _decisionTreeTrainer
     {
 
       int_t psize=parent.size;
-      if (copy_from_parent || (data_size >=psize/2) ) { 
+      if (copy_from_parent || (data_size >=psize/2)) { 
 	my_storage=nullptr;
 	size=parent.size;
 	fv_map_ptr= parent.fv_map_ptr;

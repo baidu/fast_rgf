@@ -46,7 +46,7 @@ namespace _discretizationTrainerDense
       if (min_bucket_weights<1) min_bucket_weights=1.0;
     
       for (size_t my_cut = begin; my_cut < end; my_cut++) {
-	if (my_cut<end-1 && s_arr[my_cut].x >=s_arr[my_cut+1].x) {
+	if (s_arr[my_cut].x >=s_arr[my_cut+1].x) {
 	  assert(s_arr[my_cut].x==s_arr[my_cut+1].x);
 	  continue;
 	}
@@ -126,7 +126,7 @@ float _discretizationTrainerDense::train
   while (nbuckets <max_buckets && qu.size()>0) {
     Bucket b= qu.top();
     qu.pop();
-    if (b.cut>=n-2 || b.gain <=0) continue;
+    if (b.cut>=n-2 || b.gain <=0 || (s[b.cut].x>=s[b.cut+1].x)) continue;
     tot_gain+=b.gain;
     b_vec.push_back(0.5*(s[b.cut].x+s[b.cut+1].x));
     nbuckets++;
@@ -336,7 +336,7 @@ void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
 
   
   size_t nf;
-  for (nf=min<size_t>(id_counts.size()-1,tr.max_features.value); nf >0; nf--) {
+  for (nf=min<size_t>(id_counts.size(),tr.max_features.value); nf >0; nf--) {
     if (gain[nf-1].value>0) break;
   }
   boundary_arr.reset(nf);

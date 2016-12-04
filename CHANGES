@@ -2,6 +2,6 @@
 0.2 (Aug 2016)
   This is the first release. It only supports binary classification and regression, with significant simplifications from the original RGF algorithm for speed consideration. Additional functionalities  will be supported in future releases.
   
-  
-  
+0.3 (Dec 2016)
+  Fixed several bugs that affect prediction performance (especially for small datasets).
   
