@@ -25,7 +25,7 @@ The implementation of greedy tree node optimization employs second order Newton 
 Please see the file [CHANGES](CHANGES) for version information.
 The software is written in c++11, and it has been tested under linux and macos, and it may require g++ version 4.8 or above and cmake version 2.8 or above. 
  
- If you use *g++-4.8*, after running the exmaples, you may get error messages similar to the following:
+ If you use *g++-4.8*, after running the examples, you may get error messages similar to the following:
  
     terminate called after throwing an instance of 'std::system_error'
     what():  Enable multithreading to use std::thread: Operation not permitted
@@ -45,7 +45,7 @@ The software is written in c++11, and it has been tested under linux and macos, 
      make 
      make install
 
- The following executabels will be installed under the subdirectory bin/. 
+ The following executables will be installed under the subdirectory bin/. 
  
 * forest_train: train rgf and save model
 * forest_predict: apply trained model on test data 
