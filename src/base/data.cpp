@@ -55,7 +55,7 @@ public:
     
     long tmp=atol(token_str);
     if (tmp >= numeric_limits<i_t>::max() ||
-	tmp< numeric_limits<i_t>::min()) {
+	tmp< numeric_limits<i_t>::lowest()) {
       throw MyDataInputException(" : index out of range",lno);      
     }
     result.index=tmp;
@@ -64,13 +64,14 @@ public:
     if (is_same<v_t,float>::value ||is_same<v_t,double>::value) {
       double tmp= atof(token_str + (sep+1));
       if (tmp>= numeric_limits<float>::max()) tmp=numeric_limits<float>::max();
-      if (tmp<= numeric_limits<float>::min()) tmp=numeric_limits<float>::min();
+      if (tmp<= numeric_limits<float>::lowest()) tmp=numeric_limits<float>::lowest();
+      if (!(tmp == tmp)) tmp=numeric_limits<float>::lowest(); 
       result.value=(float)tmp;
     }
     else {
       tmp=atol(token_str+ (sep+1));
       if (tmp >= numeric_limits<v_t>::max() ||
-	  tmp< numeric_limits<v_t>::min()) {
+	  tmp< numeric_limits<v_t>::lowest()) {
       throw MyDataInputException(" : value out of range",lno);      
       }
       result.value=tmp;
@@ -93,7 +94,8 @@ public:
 	  
 	  double tmp=stod(token);
 	  if (tmp>= numeric_limits<float>::max()) tmp=numeric_limits<float>::max();
-	  if (tmp<= numeric_limits<float>::min()) tmp=numeric_limits<float>::min();
+	  if (tmp<= numeric_limits<float>::lowest()) tmp=numeric_limits<float>::lowest();
+	  if (!(tmp == tmp)) tmp=numeric_limits<float>::lowest(); 
 	  feats_dense.push_back((float)tmp);
 	  continue;
 	}

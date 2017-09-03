@@ -210,84 +210,301 @@ template<typename feat_t, typename id_t, typename disc_t>
 void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
 (DataSet<float,feat_t,float> & ds, int j, TrainParam & tr, int nthreads)
 {
+
+
+  bool use_omp=false;
+#ifdef USE_OMP
+  use_omp=true;
+#endif
+
+  
+  class DataPartition {
+  public:
+    
+    int nthreads; 
+    
+    UniqueArray<size_t> data_offset; 
+    
+    vector<size_t> data_index[256];
+
+    
+   bool valid() {
+     return (nthreads>1);
+   }
+
+    
+    unsigned int feat2tid(size_t feat) {
+      unsigned char r;
+      char * s=(char *) & feat;
+      for (int j=0; j<sizeof(size_t); j++) 
+	r = r * 97 + s[j];
+      return ((unsigned int)r)%(unsigned int) nthreads;
+    }
+
+    
+    bool loop_init(size_t & i, size_t &k, size_t &pos, size_t tid) {
+      i=0;
+      k=0;
+      pos=0;
+      return (pos<data_index[tid].size());
+    }
+
+    
+    bool loop_next(size_t &i, size_t &k, size_t &pos, size_t tid) {
+      if (pos>=data_index[tid].size()) return false;
+      size_t nitems=data_index[tid][pos];
+      while (data_offset[i+1]<=nitems) i++;
+      k=nitems-data_offset[i];
+      pos++;
+      return true;
+    }
+  } th2data;
+  
+  th2data.nthreads= (nthreads<=256)?nthreads:0;
+  if (th2data.valid()&&use_omp) th2data.data_offset.resize(ds.size()+1); 
+    
+  Timer t;
+  
   using namespace _discretizationTrainerDense;
 
-  
-  unordered_map<feat_t,size_t> feat2id_count;
-  for (size_t i=0; i<ds.size(); i++) {
-    auto tmp = & ((ds.x_sparse[i])[j]);
-    for (size_t k=0; k<tmp->size(); k++) {
-      ++feat2id_count[(*tmp)[k].index];
+  t=Timer(" feature_id counting and filtering");
+  t.start();
+
+  size_t max_index=0;
+  if (th2data.valid()&&use_omp) {
+    size_t i;
+    size_t nitems=0;
+    for (i=0; i<ds.size(); i++) {
+      th2data.data_offset[i]=nitems;
+      nitems+=((ds.x_sparse[i])[j]).size();
+    }
+    th2data.data_offset[ds.size()]=nitems;
+    UniqueArray<unsigned char> tid_arr(nitems);
+
+#ifdef USE_OMP	
+    omp_set_num_threads(th2data.nthreads);
+#endif
+#pragma omp parallel for
+    for (i=0; i<ds.size(); i++) {
+      size_t nitems=th2data.data_offset[i];
+      auto tmp = & ((ds.x_sparse[i])[j]);
+      for (size_t k=0; k<tmp->size(); k++) {
+    	size_t feat=(*tmp)[k].index;
+    	if(max_index<feat) max_index=feat;
+	tid_arr[nitems++]=th2data.feat2tid(feat);
+      }
+    }
+    for (i=0; i<tid_arr.size(); i++) {
+      th2data.data_index[tid_arr[i]].push_back(i);
     }
   }
-
-  
-  int id=0;
+  else {
+    for (size_t i=0; i<ds.size(); i++) {
+      auto tmp = & ((ds.x_sparse[i])[j]);
+      for (size_t k=0; k<tmp->size(); k++) {
+	if(max_index<(*tmp)[k].index) max_index=(*tmp)[k].index;
+      }
+    }
+  }
+  size_t id=0;
   vector<size_t> id_counts;
   vector<feat_t> id2feat_vec;
-  double min_counts= tr.min_occurrences.value;
-  for (auto it=feat2id_count.begin(); it != feat2id_count.end(); it++) {
-    if (it->second >=min_counts) {
-      id_counts.push_back(it->second);
-      id2feat_vec.push_back(it->first);
-      feat2id[it->first]=id++;
+  double min_counts= std::max(1,tr.min_occurrences.value);
+
+  UniqueArray<int32_t> feat2id_count_arr;
+  bool use_arr= (max_index< (numeric_limits<int32_t>::max()/2-1));
+  if (!use_arr) {
+    
+    unordered_map<feat_t,size_t> feat2id_count_hash;
+    for (size_t i=0; i<ds.size(); i++) {
+      auto tmp = & ((ds.x_sparse[i])[j]);
+      for (size_t k=0; k<tmp->size(); k++) {
+	++feat2id_count_hash[(*tmp)[k].index];
+      }
+    }
+
+    
+    for (auto it=feat2id_count_hash.begin(); it != feat2id_count_hash.end(); it++) {
+      if (it->second >=min_counts) {
+	id_counts.push_back(it->second);
+	id2feat_vec.push_back(it->first);
+	feat2id[it->first]=id++;
+      }
     }
   }
+  else {
+    
+    feat2id_count_arr.resize(max_index+1);
+    memset(feat2id_count_arr.get(),0,sizeof(int32_t)*feat2id_count_arr.size());
+
+    if (th2data.valid()&&use_omp) {
+#ifdef USE_OMP	
+      auto mapper = [j, &th2data, &feat2id_count_arr, &ds] (int tid) {
+	size_t pi, i, k, pos;
+	if (th2data.loop_init(i,k,pos,tid)) {
+	  pi=i;
+	  auto tmp = & ((ds.x_sparse[i])[j]);
+	  while (th2data.loop_next(i,k,pos,tid)) {
+	    if (pi !=i) tmp = & ((ds.x_sparse[i])[j]);
+	    ++feat2id_count_arr[(*tmp)[k].index];
+	    pi=i;
+	  }
+	}
+      };
+      omp_set_num_threads(th2data.nthreads);
+#pragma omp parallel for
+      for (int tid=0; tid<th2data.nthreads; tid++) {
+	mapper(tid);
+      }
+#endif
+    }
+    else {
+      
+      for (size_t i=0; i<ds.size(); i++) {
+	auto tmp = & ((ds.x_sparse[i])[j]);
+	for (size_t k=0; k<tmp->size(); k++) {
+	  ++feat2id_count_arr[(*tmp)[k].index];
+	}
+      }
+    }
+    
+    for (int ft=0; ft<feat2id_count_arr.size(); ft++) {
+      if (feat2id_count_arr[ft] >=min_counts) {
+	id_counts.push_back(feat2id_count_arr[ft]);
+	id2feat_vec.push_back(ft);
+	feat2id_count_arr[ft]=id;
+	feat2id[ft]=id++;
+      }
+      else feat2id_count_arr[ft]=numeric_limits<int32_t>::max();
+    }
+  }
+  t.stop();
+  t.print();
+
+  t=Timer(" sparse feature_id to dense");
+  t.start();
 
   
-
   id2feat.reset(id_counts.size());
 
-  vector<UniqueArray<Elem> > s_arr;
-  s_arr.resize(id_counts.size());
+  
+  class MyID_struct {
+  public:
+    double w=0; 
+    double y=0;  
+    size_t count=0;  
+    Elem * s_arr_ptr=0; 
+    size_t s_arr_size=0; 
+  };
+
 
   
-  
-  
+  size_t tot_counts=0;
   for (id=0; id<id_counts.size(); id++) {
-    
-    s_arr[id].reset(id_counts[id]+1);
-    id_counts[id]=0;
+    tot_counts+= (id_counts[id]+1);
   }
-
-  size_t n=ds.size();
   
-  UniqueArray<double> id_w; 
-  id_w.reset(id_counts.size());
-  memset(id_w.get(),0,sizeof(double)*id_w.size());
-  UniqueArray<double> id_y; 
-  id_y.reset(id_counts.size());
-  memset(id_y.get(),0,sizeof(double)*id_y.size());
+  UniqueArray<Elem>  s_arr;
+  s_arr.resize(tot_counts);
+
+  
+  UniqueArray<MyID_struct> id_arr;
+  id_arr.resize(id_counts.size());
+  tot_counts=0;
+  for (id=0; id<id_counts.size(); id++) {
+    int sz=(id_counts[id]+1);
+    id_arr[id].s_arr_ptr= s_arr.get()+tot_counts;
+    id_arr[id].s_arr_size=sz;
+    tot_counts += sz;
+  }
+  
+  size_t n=ds.size();
 
   double tot_w=0; 
   double tot_y=0; 
   
-  for (size_t i=0; i<n; i++) {
-    auto tmp= & ((ds.x_sparse[i])[j]);
-    float ww=(ds.row_weights.size()==n)? ds.row_weights[i]:1.0;
-    double yy=ds.y[i]*ww;
-    tot_y+=yy;
-    tot_w+=ww;
-    for (size_t k=0; k<tmp->size(); k++) {
-      auto it = feat2id.find((*tmp)[k].index);
-      if (it == feat2id.end()) continue;
-      id=it->second;
-      id_w[id]+=ww;
-      id_y[id]+=yy;
-      s_arr[id][++id_counts[id]]=Elem((*tmp)[k].value,yy,ww);
+  if (th2data.valid() && use_arr && use_omp) {
+#ifdef USE_OMP
+    for (size_t i=0; i<n; i++) {
+      auto tmp= & ((ds.x_sparse[i])[j]);
+      float ww=(ds.row_weights.size()==n)? ds.row_weights[i]:1.0;
+      double yy=ds.y[i]*ww;
+      tot_y+=yy;
+      tot_w+=ww;
+    }
+
+    auto mapper = [j, &th2data, &feat2id_count_arr, & id_arr, &ds] (int tid) {
+      size_t pi, i, k, pos;
+      if (th2data.loop_init(i,k,pos,tid)) {
+	pi=i;
+	auto tmp = & ((ds.x_sparse[i])[j]);
+	float ww=(ds.row_weights.size()==ds.size())? ds.row_weights[i]:1.0;
+	double yy=ds.y[i]*ww;
+
+	while (th2data.loop_next(i,k,pos,tid)) {
+    
+	  if (pi !=i) {
+	    tmp = & ((ds.x_sparse[i])[j]);
+	    ww=(ds.row_weights.size()==ds.size())? ds.row_weights[i]:1.0;
+	    yy=ds.y[i]*ww;
+	  }
+	  size_t id=feat2id_count_arr[(*tmp)[k].index];
+	  if (!(id==numeric_limits<int32_t>::max())) {
+	    id_arr[id].w+=ww;
+	    id_arr[id].y+=yy;
+	    int cnt=++id_arr[id].count;
+	    id_arr[id].s_arr_ptr[cnt]=Elem((*tmp)[k].value,yy,ww);
+	  }
+	  pi=i;
+	}
+      }
+    };
+    omp_set_num_threads(th2data.nthreads);
+#pragma omp parallel for
+    for (int tid=0; tid<th2data.nthreads; tid++) {
+      mapper(tid);
+    }
+#endif
+  }
+  else {
+    for (size_t i=0; i<n; i++) {
+      auto tmp= & ((ds.x_sparse[i])[j]);
+      float ww=(ds.row_weights.size()==n)? ds.row_weights[i]:1.0;
+      double yy=ds.y[i]*ww;
+      tot_y+=yy;
+      tot_w+=ww;
+      for (size_t k=0; k<tmp->size(); k++) {
+	if (use_arr) { 
+	  id=feat2id_count_arr[(*tmp)[k].index];
+	  if (id==numeric_limits<int32_t>::max()) continue;
+	}
+	else { 
+	  auto it = feat2id.find((*tmp)[k].index);
+	  if (it == feat2id.end()) continue;
+	  id=it->second;
+	}
+	id_arr[id].w+=ww;
+	id_arr[id].y+=yy;
+	int cnt=++id_arr[id].count;
+	id_arr[id].s_arr_ptr[cnt]=Elem((*tmp)[k].value,yy,ww);
+      }
     }
   }
   
   for (id=0; id<id_counts.size(); id++) {
-    const float xx=numeric_limits<float>::min(); 
-    if (tot_w>id_w[id]) {
-      s_arr[id][0]=Elem(xx,(tot_y-id_y[id])/(tot_w-id_w[id]),(tot_w-id_w[id]));
+    assert(id_arr[id].count==id_arr[id].s_arr_size-1);
+    const float xx=numeric_limits<float>::lowest(); 
+    if (tot_w>id_arr[id].w+1e-5) {
+      id_arr[id].s_arr_ptr[0]=Elem(xx,(tot_y-id_arr[id].y)/(tot_w-id_arr[id].w),(tot_w-id_arr[id].w));
     }
     else {
-      s_arr[id][0]=Elem(xx,0.0,0.0);
+      id_arr[id].s_arr_ptr[0]=Elem(xx,0.0,0.0);
     }
   }
 
+  t.stop();
+  t.print();
+  
   
   struct GainElement {
     
@@ -300,6 +517,8 @@ void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
     }
   };
 
+  t=Timer(" compute gain");
+  t.start();
   
   vector<GainElement> gain;
   gain.resize(id_counts.size());
@@ -309,7 +528,7 @@ void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
     class SparseDiscMR : public MapReduce {
     public:
       GainElement * gain_ptr;
-      UniqueArray<Elem>  *s_arr_ptr;
+      MyID_struct  *id_arr_ptr;
       UniqueArray<float> * my_boundaries_ptr;
       TrainParam * tr_ptr;
       void map(int tid, int j) {
@@ -319,15 +538,19 @@ void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
 	tmp.value=_discretizationTrainerDense::train
 	  (my_boundaries_ptr[id],
 	   tr_ptr->min_bucket_weights.value,  tr_ptr->max_buckets.value, tr_ptr->lamL2.value,
-	   s_arr_ptr[id].get(), s_arr_ptr[id].size());
+	   id_arr_ptr[id].s_arr_ptr, id_arr_ptr[id].s_arr_size);
 	gain_ptr[j]=tmp;
       }
     } mr;
     mr.gain_ptr=gain.data();
-    mr.s_arr_ptr=s_arr.data();
+    mr.id_arr_ptr=id_arr.get();
     mr.my_boundaries_ptr=my_boundaries.get();
     mr.tr_ptr= & tr;
     runner.run(mr,0,id_counts.size());
+
+    t.stop();
+    t.print();
+    
     
   }
   if (id_counts.size()-1 > tr.max_features.value) {

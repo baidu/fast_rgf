@@ -568,6 +568,7 @@ namespace _decisionTreeTrainer
       mr2.target_ptr=&target;
       mr2.delta_p.resize(nodes.size());
       mr2.reverse_index=reverse_index.get();
+
       for (int i=0; i<nodes.size(); i++) {
 	double x;
 	double p0=nodes[i].prediction;

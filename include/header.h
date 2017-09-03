@@ -30,13 +30,20 @@
 
 #include <cstring>
 
+#ifdef USE_OMP
+#include "omp.h"
+#endif
 
 namespace rgf {
   
 
-#define VER "version 0.2 (August 2016) by Tong Zhang"
+#define VER "version 0.4 (Aug 2017) by Tong Zhang"
+
   
   const int max_thrds=128;
+
+  
+  const int vect_width=8;
 
   
   using int_t=long;

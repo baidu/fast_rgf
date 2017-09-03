@@ -25,12 +25,6 @@ The implementation of greedy tree node optimization employs second order Newton 
 Please see the file [CHANGES](CHANGES) for version information.
 The software is written in c++11, and it has been tested under linux and macos, and it may require g++ version 4.8 or above and cmake version 2.8 or above. 
  
- If you use *g++-4.8*, after running the exmaples, you may get error messages similar to the following:
- 
-    terminate called after throwing an instance of 'std::system_error'
-    what():  Enable multithreading to use std::thread: Operation not permitted
- 
- If this occurs, you need to add the **-pthread** flag in [CMakeLists.txt](CMakeLists.txt) to the variable CMAKE_CXX_FLAGS in order to enable multi-threading. This problem seems to be a bug in the g++ compiler. There may be variations of this problem specific to your system that require different fixes.
 
  To install the binaries, unpackage the software into a directory.
  

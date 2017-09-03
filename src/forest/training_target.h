@@ -24,7 +24,9 @@ namespace _decisionTreeTrainer
     double y;
     
     float w;
-
+    
+    float _empty;
+    
     inline void set(double yp, double wp) {
       y=yp;
       w=wp;
@@ -78,6 +80,8 @@ namespace _decisionTreeTrainer
     
     double _prediction0=0;
   public:
+    
+    const int vec_width=8;
     
     int loss;
 
@@ -141,23 +145,105 @@ namespace _decisionTreeTrainer
       double fpp= p*(1-p);
       yw.add(nfp*w,fpp*w);
     }
+    inline void yw_Logistic_set_vect(double pred0, size_t pos)
+    {
+      int j;
+      float ww[vect_width],yy[vect_width],qq[vect_width];
+      if (weights) {
+	for (j=0; j<vect_width; j++) {
+	  ww[j]=weights[pos+j];
+	}
+      }
+      else {
+	for (j=0; j<vect_width; j++) {
+	  ww[j]=1.0;
+	}
+      }
+      for (j=0; j<vect_width; j++) {
+	yy[j]=labels[pos+j]?1.0:0.0;
+	qq[j]=-(residues[pos+j]+pred0);
+      }
+      for (j=0; j<vect_width; j++) {
+	qq[j]=exp(qq[j]);
+      }
+      float p[vect_width],nfp[vect_width],fpp[vect_width];
+      for (j=0; j<vect_width; j++) {
+	p[j]=1.0/(1.0+qq[j]);
+      }
+      for (j=0; j<vect_width; j++) {
+	nfp[j]= (yy[j]-p[j])*ww[j];
+      }
+      for (j=0; j<vect_width; j++) {
+	fpp[j]= p[j]*(1-p[j])*ww[j];
+      }
+      for (j=0; j<vect_width; j++) {
+	_yw[pos+j].set(nfp[j],fpp[j]);
+      }
+    }
+
+    inline void yw_Logistic_add_vect(YW_struct *yw_arr, float * weights, bool *labels, double * residues, int *my_i, size_t pos)
+    {
+      int j;
+      float ww[vect_width],yy[vect_width],qq[vect_width];
+      if (weights) {
+	for (j=0; j<vect_width; j++) {
+	  ww[j]=weights[pos+j];
+	}
+      }
+      else {
+	for (j=0; j<vect_width; j++) {
+	  ww[j]=1.0;
+	}
+      }
+      for (j=0; j<vect_width; j++) {
+	yy[j]=labels[pos+j]?1.0:0.0;
+	qq[j]=-(residues[pos+j]);
+      }
+      for (j=0; j<vect_width; j++) {
+	qq[j]=exp(qq[j]);
+      }
+      float p[vect_width],nfp[vect_width],fpp[vect_width];
+      for (j=0; j<vect_width; j++) {
+	p[j]=1.0/(1.0+qq[j]);
+      }
+      for (j=0; j<vect_width; j++) {
+	nfp[j]= (yy[j]-p[j])*ww[j];
+      }
+      for (j=0; j<vect_width; j++) {
+	fpp[j]= p[j]*(1-p[j])*ww[j];
+      }
+      for (j=0; j<vect_width; j++) {
+	yw_arr[my_i[pos+j]].add(nfp[j],fpp[j]);
+      }
+    }
+
 
     
     
-    void compute_yw(train_size_t size, double pred0) {
+    void compute_yw(train_size_t size, double pred0, int nthreads) {
+#ifdef USE_OMP
+      omp_set_num_threads(nthreads);
+#endif
       train_size_t i;
       if (loss==TrainLoss::LS) {
+#pragma omp parallel for
 	for (i=0; i<size; i++) {
 	  yw_LS_set(_yw[i],weights?weights[i]:1.0,residues[i]+pred0);
 	}
       }
       if (loss==TrainLoss::MODLS) {
+#pragma omp parallel for	
 	for (i=0; i<size; i++) {
 	  yw_ModLS_set(_yw[i],weights?weights[i]:1.0,labels[i]?1:-1,residues[i]+pred0);
 	}
       }
       if (loss==TrainLoss::LOGISTIC) {
-	for (i=0; i<size; i++) {
+	int k=(vect_width==0)?0:(size/vect_width);
+#pragma omp parallel for
+	for (i=0; i<k; i++) {
+	  yw_Logistic_set_vect(pred0,i*vect_width);
+	}
+	for (i=k*vect_width; i<size; i++) {
 	  yw_Logistic_set(_yw[i],weights?weights[i]:1.0,labels[i]?1.0:0.0,residues[i]+pred0);
 	}
       }
@@ -172,7 +258,7 @@ namespace _decisionTreeTrainer
       auto my_i= &reverse_index[b];
       auto my_L= labels?(&labels[b]):nullptr;
       auto size= e-b;
-	
+
       for (j=0; j<num_yw; j++) {
 	my_yw[j].set(0,0);
       }
@@ -189,7 +275,11 @@ namespace _decisionTreeTrainer
 	}
       }
       if (loss==TrainLoss::LOGISTIC) {
-	for (i=0; i<size; i++) {
+	int k=(vect_width==0)?0:(size/vect_width);
+	for (i=0; i<k; i++) {
+	  yw_Logistic_add_vect(my_yw.get(),my_w,my_L,my_r,my_i,i*vect_width);
+	}
+	for (i=k*vect_width; i<size; i++) {
 	  j= my_i[i];
 	  yw_Logistic_add(my_yw[j],my_w?my_w[i]:1.0,my_L[i]?1.0:0.0,my_r[i]);
 	}

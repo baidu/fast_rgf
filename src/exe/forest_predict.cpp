@@ -107,7 +107,11 @@ int main(int argc, char *argv[])
 	 << ">" <<endl;
     ifstream is(param_modelfile.load_filename.value);
     if (!is.good()) {
-      cerr << "cannot open model file for reading " <<endl;
+#ifdef USE_OMP
+    cerr << " using up to " << nthreads << " openmp threads" << endl;
+#else
+    cerr << " using up to " << nthreads << " threads" << endl;
+#endif
     }
     else {
       forest.read(is);

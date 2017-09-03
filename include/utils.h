@@ -12,6 +12,7 @@
 
 #include "header.h"
 
+
 namespace rgf {
   
   class MyIO {
@@ -241,13 +242,26 @@ class Timer {
 	mr.reduce(0);
 	return;
       }
+      static const bool use_omp=true;
+
+#ifndef USE_OMP
       for (tid=0; tid<nthreads; tid++) {
 	_th[tid]= thread(& MapReduceRunner::single_thread_map_reduce<T>, this,
 			 std::ref(mr),begin, end, tid, nthreads,run_range);
       }
+#else
+      omp_set_num_threads(nthreads);
+#pragma omp parallel for
+      for (tid=0; tid<nthreads; tid++) {
+	single_thread_map_reduce<T>(std::ref(mr),begin,end,tid,nthreads,run_range);
+      }
+#endif
+      
       mr.master();
       for (tid=0; tid<nthreads; tid++) {
+#ifndef USE_OMP
 	_th[tid].join();
+#endif
 	mr.reduce(tid);
       }
     }

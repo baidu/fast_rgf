@@ -270,8 +270,10 @@ namespace _decisionTreeTrainer
     void compute_gain(class DecisionTree<d_t,i_t,v_t>::TrainParam & param_dt,
 		      FeatureMapper &fmapper) {
 
-      target.compute_yw(data_size,prediction);
       MapReduceRunner runner(param_dt.nthreads.value,MapReduceRunner::INTERLEAVE);
+
+      target.compute_yw(data_size,prediction,runner.nthreads);
+	    
       ComputeGainMR mr(runner.nthreads,param_dt,this,fmapper);
       runner.run(mr,0,featmap_dense.size()+dim_sparse);
       

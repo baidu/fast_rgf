@@ -5,3 +5,10 @@
 0.3 (Dec 2016)
   Fixed several bugs that affect prediction performance (especially for small datasets).
   
+0.4 (Aug 2017)
+  Fixed bug which truncated negative float values to numeric_limits<float>::min(),  causing degration in prediction performance for datasets with negative values; changed truncation to numeric_limits<float>::lowest()
+
+0.5 (Sept 2017)
+  Added openmp support and multi-threading for discretization
+  Added loop unrolling and compilation option for simd optimization
+

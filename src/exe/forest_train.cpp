@@ -111,7 +111,11 @@ int main(int argc, char *argv[])
   assert(param_tstfile.nthreads.value==nthreads);
   assert(param_dt.nthreads.value==nthreads);
   if (param_set.verbose.value>=2) {
+#ifdef USE_OMP
+    cerr << " using up to " << nthreads << " openmp threads" << endl;
+#else
     cerr << " using up to " << nthreads << " threads" << endl;
+#endif
   }
   param_rgf.verbose.set_value(param_set.verbose.value);
 
@@ -140,6 +144,8 @@ int main(int argc, char *argv[])
       cerr << "discretizing training data ... " <<endl;
       param_disc_dense.print_parameters(cerr);
       param_disc_sparse.print_parameters(cerr);
+      t=Timer("discritizer training time");
+      t.start();
       DataDiscretizationInt disc;
       disc.train(trn_orig,param_disc_dense,param_disc_sparse,nthreads);
       disc.set_convert("SPARSE");
@@ -151,6 +157,8 @@ int main(int argc, char *argv[])
       disc.write(ss2);
       disc2.read(ss2);
       disc2.apply(trn_orig,trn,nthreads);
+      t.stop();
+      t.print();
     }
 
     if (pre_load) {
