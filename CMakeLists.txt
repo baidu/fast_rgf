@@ -7,7 +7,6 @@ project (FastRGF)
 # whether to use openmp (default is on)
 option(OPENMP "Use openmp for multi-threads" ON)
 
-
 set(CMAKE_CXX_FLAGS "-O3 -std=c++11")
 #set(CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
 
@@ -17,9 +16,11 @@ if(OPENMP)
  add_definitions("-DUSE_OMP")		
 
   if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    #  mac os x: clang does not support openmp, need to install a g++  with openmp support
-    set(CMAKE_CXX_COMPILER "/usr/local/bin/g++-7")
-    set (CMAKE_CXX_COMPILER_ID "GNU")
+    #  mac os x: clang does not support openmp, need to install a g++ with openmp support
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "[gG][nN][uU]")
+      message(FATAL_ERROR "Compilation only with g++ is supported")
+    endif()
+    set(CMAKE_CXX_COMPILER_ID "GNU")
   endif()
 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
@@ -29,17 +30,19 @@ endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -ftree-vectorize -ffast-math")
-endif()		
+endif()
+
+if(WIN32 AND MINGW)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+endif()
+
 message("c++  compiler= " ${CMAKE_CXX_COMPILER})
 message("c++  options= " ${CMAKE_CXX_FLAGS})
-get_directory_property( cDirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
+get_directory_property(cDirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS)
 message("c++  definitions= " ${cDirDefs})
 
 include_directories(include)
 
-
 add_subdirectory(src/base)
 add_subdirectory(src/forest)
 add_subdirectory(src/exe)
-
-
