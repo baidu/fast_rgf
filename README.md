@@ -2,7 +2,7 @@
 #                                       FastRGF
 ###     Multi-core implementation of Regularized Greedy Forest [RGF] 
 
-### Version 0.3 (Dec 2016) by Tong Zhang
+### Version 0.5 (Sept 2017) by Tong Zhang
                           
 ---------
 #### 1. Introduction
