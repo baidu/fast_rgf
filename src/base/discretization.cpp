@@ -167,6 +167,7 @@ void FeatureDiscretizationDense::train(DataSet<float,i_t,float> & ds, int j,Trai
   }
   
   tot_w=ds.size()/tot_w;
+  if (tot_w<1.0) tot_w=1.0;
   for (size_t i=0; i<s.size(); i++) {
     s[i].w *=tot_w;
   }
