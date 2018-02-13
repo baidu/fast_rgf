@@ -43,7 +43,8 @@ namespace _discretizationTrainerDense
 	   float lamL2) :
       begin(_b), end(_e) , cut(_e), gain(0.0)
     {
-      if (min_bucket_weights<1) min_bucket_weights=1.0;
+      if (min_bucket_weights<1e-3) min_bucket_weights=1e-3;
+      if (lamL2<1e-10) lamL2=1e-10;
     
       for (size_t my_cut = begin; my_cut < end; my_cut++) {
 	if (s_arr[my_cut].x >=s_arr[my_cut+1].x) {
@@ -59,15 +60,15 @@ namespace _discretizationTrainerDense
 	if (weight_sum_left+1e-10<min_bucket_weights || 
 	    weight_sum_right+1e-10<min_bucket_weights) continue;
 	
-	double pred_left= y_sum_left/weight_sum_left;
-	double pred_right= y_sum_right/weight_sum_right;
+	double pred_left= y_sum_left/(weight_sum_left+lamL2);
+	double pred_right= y_sum_right/(weight_sum_right+lamL2);
+	double pred_tot= (y_sum_left+y_sum_right)/(weight_sum_left+weight_sum_right+2*lamL2);
+	
 
-	double pred_tot = (y_sum_left+y_sum_right)/(weight_sum_left+weight_sum_right);
-
-	double diff_left=pred_left-pred_tot;
-	double diff_right=pred_right-pred_tot;
-	double my_gain= (diff_left*diff_left*(weight_sum_left-lamL2)
-			 +diff_right*diff_right*(weight_sum_right-lamL2));
+	double obj_left=(weight_sum_left+lamL2)*pred_left*pred_left - 2* pred_left*y_sum_left;
+	double obj_right=(weight_sum_right+lamL2)*pred_right*pred_right - 2* pred_right*y_sum_right;
+	double obj_tot=(weight_sum_left+weight_sum_right+2*lamL2)*pred_tot*pred_tot - 2* pred_tot*(y_sum_left+y_sum_right);
+	double my_gain= obj_tot - (obj_left+obj_right);
 
 	if (my_gain>gain) {
 	  cut=my_cut;
@@ -95,7 +96,7 @@ float _discretizationTrainerDense::train
  unsigned int  max_buckets, float lamL2,
  Elem * s, size_t n)
 {
-  if (min_bucket_weights<1) min_bucket_weights=1.0;
+  if (min_bucket_weights<1e-3) min_bucket_weights=1e-3;
 
   sort(s, s+n);
   
@@ -106,6 +107,7 @@ float _discretizationTrainerDense::train
   y_sum_vec.push_back(0);
   w_sum_vec.push_back(0);
   size_t i;
+
   for (i=0; i<n; i++) {
     double w=s[i].w;
     y_sum += s[i].y*w;
@@ -113,6 +115,7 @@ float _discretizationTrainerDense::train
     w_sum += w;
     w_sum_vec.push_back(w_sum);
   }
+
   double tot_gain=0;
   
   priority_queue<Bucket,vector<Bucket> > qu;
@@ -153,12 +156,19 @@ void FeatureDiscretizationDense::train(DataSet<float,i_t,float> & ds, int j,Trai
   using namespace _discretizationTrainerDense;
   UniqueArray<Elem> s;
   s.reset(ds.size());
+  double tot_w=1e-10;
   for (size_t i=0; i< ds.size(); i++) {
     Elem tmp;
     tmp.x=ds.x_dense[i][j];
     tmp.y=ds.y[i];
     tmp.w=ds.row_weights.size()>0?ds.row_weights[i]:1.0;
     s[i]=tmp;
+    tot_w+=tmp.w;
+  }
+  
+  tot_w=ds.size()/tot_w;
+  for (size_t i=0; i<s.size(); i++) {
+    s[i].w *=tot_w;
   }
   _discretizationTrainerDense::train(boundaries,
 				     tr.min_bucket_weights.value, 
@@ -208,7 +218,7 @@ void FeatureDiscretizationDense::write(ostream & os)
 
 template<typename feat_t, typename id_t, typename disc_t>
 void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
-(DataSet<float,feat_t,float> & ds, int j, TrainParam & tr, int nthreads)
+(DataSet<float,feat_t,float> & ds, int j, TrainParam & tr, int nthreads, int verbose)
 {
 
 
@@ -379,7 +389,9 @@ void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
     }
   }
   t.stop();
-  t.print();
+  if (verbose>=5) {
+    t.print();
+  }
 
   t=Timer(" sparse feature_id to dense");
   t.start();
@@ -503,7 +515,9 @@ void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
   }
 
   t.stop();
-  t.print();
+  if (verbose>=5) {
+    t.print();
+  }
   
   
   struct GainElement {
@@ -549,7 +563,9 @@ void FeatureDiscretizationSparse<feat_t,id_t,disc_t>::train
     runner.run(mr,0,id_counts.size());
 
     t.stop();
-    t.print();
+    if (verbose >=5) {
+      t.print();
+    }
     
     
   }
@@ -651,7 +667,7 @@ void DataDiscretization<src_i_t,dest_d_t,dest_i_t,dest_v_t>::train
 (DataSet<float,src_i_t,float> & ds,
  FeatureDiscretizationDense::TrainParam & tr_dense,
  class FeatureDiscretizationSparse<src_i_t,dest_i_t,dest_v_t>::TrainParam & tr_sparse,
- int nthreads)
+ int nthreads, int verbose)
 {
   if (tr_dense.max_buckets.value+1>=numeric_limits<dest_d_t>::max()) {
     cerr << "maximum dense discretization bucket size " << tr_dense.max_buckets.value
@@ -689,7 +705,7 @@ void DataDiscretization<src_i_t,dest_d_t,dest_i_t,dest_v_t>::train
   
   disc_sparse.reset(ds.dim_sparse());
   for (j=0; j<ds.dim_sparse(); j++) {
-    disc_sparse[j].train(ds,j,tr_sparse,nthreads);
+    disc_sparse[j].train(ds,j,tr_sparse,nthreads,verbose);
   }
 
   offset_init();

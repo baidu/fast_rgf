@@ -158,18 +158,24 @@ void DecisionForest<d_t,i_t,v_t>::train(
   _dim_sparse=ds.dim_sparse();
   _train_loss=TrainLoss::str2loss(param_dt.loss.value);
   _dtree_vec.resize(param_rgf.ntrees.value);
-  if (param_rgf.verbose.value>=2) {
-    fprintf(stderr,"build tree          ");
-  }
 
   DecisionForestTrainer forest_trainer(param_rgf.opt.value);
 
+  if (param_rgf.verbose.value>=2) {
+    cerr << "  training data size= " << ds.size() << " with " << ds.dim_dense() << " dense features"
+	 << " and " << ds.dim_sparse() << " sparse feature groups" <<endl;
+    fflush(stderr);
+  }
   t0.start();
-  forest_trainer.init(ds,ngrps);
+  forest_trainer.init(ds,ngrps,param_rgf.verbose.value);
   t0.stop();
   int eval_freq = tst.size()<=0? 0: param_rgf.eval_frequency.value;
   int write_freq = model_file.size()<=0? 0: param_rgf.write_frequency.value;
   if (tst.size() != tst.y.size()) eval_freq=0;
+
+  if (param_rgf.verbose.value>=2) {
+      fprintf(stderr,"\n\nbuild tree            ");
+  }
 
   MapReduceRunner runner(param_dt.nthreads.value,MapReduceRunner::BLOCK);
   class TrainEvalMR : public MapReduce {
@@ -209,7 +215,9 @@ void DecisionForest<d_t,i_t,v_t>::train(
 	double result=0;
 	int *offset=&tst_leaf_node[i*tree_vec_ptr->size()];
 	for (int c=0; c<=cur_tree_id; c++) {
-	  result += ((*tree_vec_ptr)[c])[offset[c]].prediction;
+	  if (offset[c]>=0) {
+	    result += ((*tree_vec_ptr)[c])[offset[c]].prediction;
+	  }
 	}
 	tst_scr[i]=result;
       }
@@ -231,18 +239,16 @@ void DecisionForest<d_t,i_t,v_t>::train(
   
   for (int i=0; i<_dtree_vec.size();i++) {
     if (param_rgf.verbose.value>=2) {
-      fprintf(stderr,"\b\b\b\b\b\b\b\b\b");
-      fprintf(stderr,"%4d/%4d",i+1,(unsigned int)_dtree_vec.size());
+      fprintf(stderr,"\b\b\b\b\b\b\b\b\b\b\b");
+      fprintf(stderr,"%5d/%5d",i+1,(unsigned int)_dtree_vec.size());
       fflush(stderr);
     }
     t1.start();
     forest_trainer.build_single_tree(ds, my_scr_arr, param_dt, param_rgf.step_size.value, _dtree_vec[i]);
     t1.stop();
     if (forest_trainer.is_fully_corrective()) {
-      int niters=100;
       t2.start();
-      forest_trainer.fully_corrective_update(ds, my_scr_arr, param_dt, _dtree_vec.data(),
-					     i+1, niters);
+      forest_trainer.fully_corrective_update(ds, my_scr_arr, param_dt, _dtree_vec.data(), i+1);
       t2.stop();
     }
     t3.start();
@@ -273,7 +279,7 @@ void DecisionForest<d_t,i_t,v_t>::train(
       cerr <<endl;
       fflush(stderr);
       if (i+1<_dtree_vec.size()&&!(write_freq>0 && (i+1)%write_freq==0)) {
-	fprintf(stderr,"build tree          ");
+	fprintf(stderr,"build tree            ");
 	fflush(stderr);
       }
     }
@@ -295,7 +301,7 @@ void DecisionForest<d_t,i_t,v_t>::train(
       }
       cerr << endl;
       if (i+1<_dtree_vec.size()) {
-	fprintf(stderr,"build tree          ");
+	fprintf(stderr,"build tree            ");
 	fflush(stderr);
       }
     }

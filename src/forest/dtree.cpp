@@ -89,7 +89,7 @@ void DecisionTree<d_t,i_t,v_t>::train(DataSet<d_t,i_t,v_t> & ds, double * scr_ar
 {
   DecisionForestTrainer forest_trainer;
   int ngrps= MapReduceRunner::num_threads(param_dt.nthreads.value);
-  forest_trainer.init(ds,ngrps);
+  forest_trainer.init(ds,ngrps,0);
   forest_trainer.build_single_tree(ds, scr_arr, param_dt,1.0,*this);
   forest_trainer.finish(ds,0);
 }
@@ -146,6 +146,15 @@ template<typename d_t, typename i_t, typename v_t>
 void DecisionTree<d_t,i_t,v_t>::print(ostream & os, int dim_dense, int dim_sparse, 
 				      vector<string> & feature_names, bool depth_first)
 {
+  if (_nodes_vec.size()<=0) {
+    if (depth_first) {
+      os <<" 0:prediction=0" <<endl;
+    }
+    else {
+      os <<" 0: leaf=0" <<endl;
+    }
+    return;
+  }
 
   if (depth_first) {
     int count=1;
@@ -156,7 +165,7 @@ void DecisionTree<d_t,i_t,v_t>::print(ostream & os, int dim_dense, int dim_spars
   vector<int> level;
   level.resize(_nodes_vec.size());
   level[0]=0;
-  
+
   for (int i=0; i<_nodes_vec.size(); i++) {
     auto *ptr = &_nodes_vec[i];
     for (int j=0; j<level[i]; j++) os << "    ";

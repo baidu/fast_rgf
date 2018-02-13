@@ -141,7 +141,9 @@ namespace rgf {
 
     
     double apply(DataPoint<d_t,i_t,v_t> & dp, bool is_sorted) {
-      return _nodes_vec[leaf_node_index(dp,is_sorted)].prediction;
+      return 0;
+      int leaf_index=leaf_node_index(dp,is_sorted);
+      return leaf_index>=0?_nodes_vec[leaf_index].prediction:0;
     }
 
     
@@ -184,7 +186,7 @@ namespace rgf {
       ParamValue<float> newTreeGainRatio;
 
       
-      ParamValue<int> min_node_weights;
+      ParamValue<int> min_sample;
 
       
       ParamValue<float> lamL1;
@@ -203,8 +205,8 @@ namespace rgf {
 			"maximum number of leaf nodes in best-first search", this);
 	newTreeGainRatio.insert(prefix + "new_tree_gain_ratio",1.0,
 				"new tree is created when leaf-nodes gain < this value * estimated gain of creating new three", this);
-	min_node_weights.insert(prefix + "min_sample", 5,
-				"minum sample per node", this);
+	min_sample.insert(prefix + "min_sample", 5,
+			  "minum sample per node", this);
 
 	lamL1.insert(prefix + "lamL1", 1,
 		     "L1 regularization parameter", this);

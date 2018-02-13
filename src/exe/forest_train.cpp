@@ -117,6 +117,13 @@ int main(int argc, char *argv[])
     cerr << " using up to " << nthreads << " threads" << endl;
 #endif
   }
+
+  if (param_set.nthreads.value <=0) {
+    cerr << " the number of threads is set to " << nthreads << ", which is the maximum number of logical hardware threads including hyperthreads" <<endl;
+    cerr << " the optimal number of threads is often the number of physical cores that may be smaller than " << nthreads << endl;
+    cerr << " for example, to achieve better performance, you may try to set the number of threads to " << nthreads/2 <<endl <<endl;
+  }
+  
   param_rgf.verbose.set_value(param_set.verbose.value);
 
   bool pre_load= (param_rgf.eval_frequency.value>0)
@@ -147,7 +154,7 @@ int main(int argc, char *argv[])
       t=Timer("discritizer training time");
       t.start();
       DataDiscretizationInt disc;
-      disc.train(trn_orig,param_disc_dense,param_disc_sparse,nthreads);
+      disc.train(trn_orig,param_disc_dense,param_disc_sparse,nthreads,param_set.verbose.value);
       disc.set_convert("SPARSE");
 
       stringstream ss1,ss2;

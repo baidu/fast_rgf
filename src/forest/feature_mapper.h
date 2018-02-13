@@ -199,13 +199,12 @@ namespace _decisionTreeTrainer
 			double & prediction_current,
 			double & prediction_left,
 			double & prediction_right,
-			double min_node_weights,
+			double min_sample,
 			float lamL1, float lamL2,
 			size_t data_size, d_t * data_dense_start,
 			YW0_struct *yw_data_arr, double prediction0,
 			YW_struct *yw_sum_arr)
     {
-      min_node_weights =     min_node_weights -1e-10;
       train_size_t i;
 
       memset(yw_sum_arr,0,size*sizeof(YW_struct));
@@ -226,6 +225,9 @@ namespace _decisionTreeTrainer
 
       double tot_w=yw_sum_arr[size-1].w;
       double tot_y=yw_sum_arr[size-1].y;
+
+      
+      double min_node_weights  = min_sample * tot_w/(data_size +1e-10);
 
       double obj_current= solve_L1_L2(tot_w, prediction0*tot_w+tot_y, lamL1,lamL2,prediction_current);
       prediction_left=prediction_right=prediction_current;
@@ -290,7 +292,7 @@ namespace _decisionTreeTrainer
 			double & prediction_current,
 			double & prediction_left,
 			double & prediction_right,
-			double min_node_weights,
+			double min_sample,
 			float lamL1, float lamL2,
 			size_t data_size, SparseFeatureElementArray<i_t,v_t> * data_sparse_start,
 			YW0_struct *yw_data_arr, double prediction0,
@@ -298,7 +300,6 @@ namespace _decisionTreeTrainer
     {
       if (nfeats<=0) return;
     
-      min_node_weights =  min_node_weights -1e-10;
       train_size_t i;
     
       memset(yw_sum_arr,0,offset[nfeats]*sizeof(YW_struct));
@@ -317,7 +318,9 @@ namespace _decisionTreeTrainer
 	tot_y += yw0.y;
 	tot_w += yw0.w;
       }
-
+      
+      double min_node_weights  = min_sample * tot_w/(data_size +1e-10);
+      
       double obj_current= solve_L1_L2(tot_w, prediction0*tot_w+tot_y, lamL1,lamL2,prediction_current);
       prediction_left=prediction_right=prediction_current;
 

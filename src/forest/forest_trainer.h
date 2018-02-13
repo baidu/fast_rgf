@@ -34,7 +34,7 @@ namespace rgf {
     
     
     template<typename d_t, typename i_t, typename v_t>
-    void init(DataSet<d_t,i_t,v_t> & ds, int ngrps);
+    void init(DataSet<d_t,i_t,v_t> & ds, int ngrps, int verbose);
 
     
     template<typename d_t, typename i_t, typename v_t>
@@ -47,7 +47,7 @@ namespace rgf {
     void fully_corrective_update(DataSet<d_t,i_t,v_t> & ds, double *scr_arr, 
 				 class DecisionTree<d_t,i_t,v_t>::TrainParam &param_dt,
 				 DecisionTree<d_t,i_t,v_t> * dtree_vec,
-				 int ntrees, int niters);
+				 int ntrees);
 
     
     template<typename d_t, typename i_t, typename v_t>

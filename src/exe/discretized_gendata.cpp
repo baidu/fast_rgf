@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     cerr << "training using input data ..." <<endl;
     param_disc_dense.print_parameters(cerr);
     param_disc_sparse.print_parameters(cerr);
-    disc.train(input,param_disc_dense,param_disc_sparse,nthreads);
+    disc.train(input,param_disc_dense,param_disc_sparse,nthreads,param_set.verbose.value);
     disc.set_convert(param_outfile.convert_type.value);
   }
   else {

@@ -255,7 +255,7 @@ class MyDataInputLineParserMR : public MapReduce
 	("number of lines in weight-file does not match that of feature-file", lines_read);
     }
 
-    if (is_w_ptr !=nullptr && is_y_ptr->eof() != is_eof) {
+    if (is_y_ptr !=nullptr && is_y_ptr->eof() != is_eof) {
      throw  MyDataInputException
        ("number of lines in label-file does not match that of feature-file", lines_read);
     }

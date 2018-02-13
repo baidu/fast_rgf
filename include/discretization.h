@@ -39,7 +39,7 @@ namespace rgf {
       {
 	min_bucket_weights.insert(prefix+"min_bucket_weights", 
 				  5,
-				  "minimum sum of data weights for each discretized value",
+				  "minimum number of effective samples for each discretized value",
 				  this);
 	max_buckets.insert(prefix+"max_buckets",
 			   65000, 
@@ -134,7 +134,7 @@ namespace rgf {
       {
 	min_bucket_weights.insert(prefix+"min_bucket_weights", 
 				  5,
-				  "minimum sum of data weights for each discretized value",
+				  "minimum number of effective samples for each discretized value",
 				  this);
 	max_buckets.insert(prefix+"max_buckets",
 			   200, 
@@ -191,7 +191,7 @@ namespace rgf {
     }
 
   
-    void train(DataSet<float,feat_t,float> & ds, int j, TrainParam & tr, int nthreads);
+    void train(DataSet<float,feat_t,float> & ds, int j, TrainParam & tr, int nthreads, int verbose);
       
   
   void read(istream & is);
@@ -249,7 +249,7 @@ namespace rgf {
     void train(DataSet<float,src_i_t,float> & ds,
 	       FeatureDiscretizationDense::TrainParam & tr_dense,
 	       class FeatureDiscretizationSparse<src_i_t,dest_i_t,dest_v_t>::TrainParam & tr_sparse,
-	       int nthreads);
+	       int nthreads, int verbose);
 
     
     bool apply(DataPoint<float,src_i_t,float> & src,

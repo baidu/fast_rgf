@@ -39,7 +39,7 @@ public:
   
   ParamValue<int> verbose;
   SetParam(string prefix="set.") {
-    nthreads.insert(prefix+"nthreads", 0, "number of threads for training and testing (0 means maximum number of hardware threads)",this);
+    nthreads.insert(prefix+"nthreads", 0, "number of threads for training and testing (0 means maximum number of hardware logical threads)",this);
     verbose.insert(prefix+ "verbose",2, "verbose level",this);
     this->set_description("global options:");
   }

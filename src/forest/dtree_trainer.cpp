@@ -186,7 +186,7 @@ namespace _decisionTreeTrainer
     }
 	
     
-    void init(DataSet<d_t,i_t,v_t> & ds, int ngrps)
+    void init(DataSet<d_t,i_t,v_t> & ds, int ngrps, int verbose)
     {
       fmapper.init(ds,ngrps);
       nrows=ds.size();
@@ -194,6 +194,12 @@ namespace _decisionTreeTrainer
 
       if (fmapper.is_valid) {
 	init_with_fmapper(ds);
+
+	if (verbose>=5) {
+	  cerr << "  split features into " << fmapper.dim_dense << " dense features"
+	       << " and " << fmapper.dim_sparse << " sparse feature groups" <<endl;
+	  fflush(stderr);
+	}
 	return;
       }
 
@@ -526,6 +532,8 @@ namespace _decisionTreeTrainer
     
     void update_predictions(TrainTarget & target, class DecisionTree<d_t,i_t,v_t>::TrainParam & param_dt, Timer & t1, Timer & t2)
     {
+      if (nodes.size()==0) return;
+      
       int nthreads=param_dt.nthreads.value;
       double lamL1=param_dt.lamL1.value;
       double lamL2=param_dt.lamL2.value;
@@ -611,11 +619,11 @@ namespace _decisionTreeTrainer
 #include "forest_trainer.h"
 
 template<typename d_t, typename i_t, typename v_t>
-void DecisionForestTrainer::init(DataSet<d_t,i_t,v_t> & ds,int ngrps)
+void DecisionForestTrainer::init(DataSet<d_t,i_t,v_t> & ds,int ngrps, int verbose)
 {
   ds.sort();
   auto tmp =new (MultiTreeTrainer<d_t,i_t,v_t>);
-  tmp->dtree_trainer.init(ds,ngrps);
+  tmp->dtree_trainer.init(ds,ngrps,verbose);
   trainer_ptr = tmp;
 }
 
@@ -658,7 +666,7 @@ template<typename d_t, typename i_t, typename v_t>
 void DecisionForestTrainer::fully_corrective_update(DataSet<d_t,i_t,v_t> & ds, double *scr_arr, 
 						    class DecisionTree<d_t,i_t,v_t>::TrainParam &param_dt,
 						    DecisionTree<d_t,i_t,v_t> * dtree_vec,
-						    int ntrees, int niters)
+						    int ntrees)
 {
   
   MultiTreeTrainer<d_t,i_t,v_t> * my_trainer_ptr
@@ -669,19 +677,31 @@ void DecisionForestTrainer::fully_corrective_update(DataSet<d_t,i_t,v_t> & ds, d
 
   assert(my_trainer_ptr->tree_vec.size()==ntrees);
   int i;
-  for (i=0; i<my_trainer_ptr->tree_vec.size(); i++) {
+  
+  int num_opts=80;
+  
+  int num_recent=20;
+  if (ntrees<=num_recent) num_recent=ntrees;
+  
+  for (int it=0; it<num_opts; it++) {
+    i= (my_trainer_ptr->cur_id++) % my_trainer_ptr->tree_vec.size();
+    if (ntrees-num_recent<=i) continue;
     assert(my_trainer_ptr->tree_vec[i]->tree_id==i);
     my_trainer_ptr->tree_vec[i]->copyPredictionFrom(dtree_vec[i]);
-  }
-  for (int it=0; it<niters; it++) {
-    i= (my_trainer_ptr->cur_id++) % my_trainer_ptr->tree_vec.size();
+    
     my_trainer_ptr->tree_vec[i]->update_predictions(my_trainer_ptr->dtree_trainer.target,param_dt, t1, t2);
-  }
-   for (i=0; i<my_trainer_ptr->tree_vec.size(); i++) {
-    assert(my_trainer_ptr->tree_vec[i]->tree_id==i);
+
     my_trainer_ptr->tree_vec[i]->copyPredictionTo(dtree_vec[i]);
   }
-   my_trainer_ptr->dtree_trainer.target.copy_back(my_trainer_ptr->dtree_trainer.nrows, ds.y.data(), scr_arr);
+  for (i=ntrees-num_recent; i<ntrees; i++) {
+    assert(my_trainer_ptr->tree_vec[i]->tree_id==i);
+    my_trainer_ptr->tree_vec[i]->copyPredictionFrom(dtree_vec[i]);
+    
+    my_trainer_ptr->tree_vec[i]->update_predictions(my_trainer_ptr->dtree_trainer.target,param_dt, t1, t2);
+
+    my_trainer_ptr->tree_vec[i]->copyPredictionTo(dtree_vec[i]);
+  }
+  my_trainer_ptr->dtree_trainer.target.copy_back(my_trainer_ptr->dtree_trainer.nrows, ds.y.data(), scr_arr);
 }
 
 
@@ -689,7 +709,7 @@ void DecisionForestTrainer::fully_corrective_update(DataSet<d_t,i_t,v_t> & ds, d
 namespace rgf {
 
   
-  template void DecisionForestTrainer::init(DataSetShort&,int);
+  template void DecisionForestTrainer::init(DataSetShort&,int, int);
   template void DecisionForestTrainer::finish(DataSetShort&,int);
   template void DecisionForestTrainer::build_single_tree(DataSetShort&, double *, 
 							 class DecisionTreeShort::TrainParam &,double,
@@ -697,10 +717,10 @@ namespace rgf {
   template void DecisionForestTrainer::fully_corrective_update(DataSetShort &, double *,
 							       class DecisionTreeShort::TrainParam &,
 							       DecisionTreeShort *,
-							       int, int);
+							       int);
 
   
-  template void DecisionForestTrainer::init(DataSetInt&,int);
+  template void DecisionForestTrainer::init(DataSetInt&,int, int);
   template void DecisionForestTrainer::finish(DataSetInt&,int);
   template void DecisionForestTrainer::build_single_tree(DataSetInt&, double *, 
 							 class DecisionTreeInt::TrainParam &,double,
@@ -708,6 +728,6 @@ namespace rgf {
   template void DecisionForestTrainer::fully_corrective_update(DataSetInt &, double *,
 							       class DecisionTreeInt::TrainParam &,
 							       DecisionTreeInt *,
-							       int, int);
+							       int);
 
 }
