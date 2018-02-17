@@ -141,7 +141,6 @@ namespace rgf {
 
     
     double apply(DataPoint<d_t,i_t,v_t> & dp, bool is_sorted) {
-      return 0;
       int leaf_index=leaf_node_index(dp,is_sorted);
       return leaf_index>=0?_nodes_vec[leaf_index].prediction:0;
     }
