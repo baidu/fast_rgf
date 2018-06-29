@@ -2,7 +2,9 @@
 #                                       FastRGF
 ###     Multi-core implementation of Regularized Greedy Forest [RGF] 
 
-### Version 0.3 (Dec 2016) by Tong Zhang
+### Version 0.6 (Feb 2018) by Tong Zhang
+
+#### The active development of FastRGF is maintained now in [RGF-team repository](https://github.com/RGF-team/rgf/tree/master/FastRGF)
                           
 ---------
 #### 1. Introduction
@@ -17,7 +19,7 @@ The implementation employs the following conepts described in the **[RGF]** pape
 -  fully-corrective update
 -  greedy node expansion with trade-off between leaf node splitting for current tree and root splitting for new tree
 
-However, various simplifications are made to accelerate the training speed. Therefore, unlike the original RGF program (see <http://stat.rutgers.edu/home/tzhang/software/rgf/>), this software does not reproduce the results in the paper. 
+However, various simplifications are made to accelerate the training speed. Therefore, unlike the original RGF program (see <http://tongzhang-ml.org/software/rgf/index.html>), this software does not reproduce the results in the paper. 
 
 The implementation of greedy tree node optimization employs second order Newton approximation for general loss functions. For logistic regression loss, which works especially well for many binary classification problems, this approach was considered in **[PL]**; for general loss functions, 2nd order approximation was considered in **[ZCS]**.
 
@@ -62,4 +64,3 @@ The software is distributed under the MIT license. Please read the file [LICENSE
 **[PL]** Ping Li. Robust LogitBoost and Adaptive Base Class (ABC) LogitBoost, *UAI* 2010.
 
 **[ZCS]** Zhaohui Zheng, Hongyuan Zha, Tong Zhang, Olivier Chapelle, Keke Chen, Gordon Sun. A general boosting method and its application to learning ranking functions for web search, *NIPS* 2007.
-
