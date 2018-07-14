@@ -13,7 +13,7 @@ This software package provides a multi-core implementation of a simplified Regul
 
 RGF is a machine learning method for building decision forests that have been used to win some kaggle competitions. In our experience it works better than *gradient boosting* on many relatively large datasets.
 
-The implementation employs the following conepts described in the **[RGF]** paper:
+The implementation employs the following concepts described in the **[RGF]** paper:
 
 -  tree node regularization
 -  fully-corrective update
